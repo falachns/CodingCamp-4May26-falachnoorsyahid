@@ -1,0 +1,27 @@
+{
+  "name": "codingcamp-4may26-falachnoorsyahid",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "vitest --run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/falachns/CodingCamp-4May26-falachnoorsyahid.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/falachns/CodingCamp-4May26-falachnoorsyahid/issues"
+  },
+  "homepage": "https://github.com/falachns/CodingCamp-4May26-falachnoorsyahid#readme",
+  "devDependencies": {
+    "fast-check": "^4.7.0",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.5"
+  }
+}
