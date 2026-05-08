@@ -201,6 +201,32 @@ section:hover {
   text-align: center;
 }
 
+.timer-duration-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.timer-duration-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.timer-duration-input {
+  width: 80px;
+  text-align: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
 .timer-display {
   font-size: var(--font-size-display);
   font-weight: 400;
@@ -326,6 +352,42 @@ section:hover {
   display: flex;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
+}
+
+.task-sort-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background-color: #f8f9fa;
+  border-radius: var(--radius-md);
+}
+
+.sort-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.sort-select {
+  flex: 1;
+  max-width: 250px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px var(--color-focus-ring);
 }
 
 .task-list {
@@ -675,6 +737,15 @@ section:hover {
     min-width: 150px;
   }
   
+  .timer-duration-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .timer-duration-input {
+    width: 100%;
+  }
+  
   .timer-controls {
     flex-direction: column;
     gap: var(--spacing-sm);
@@ -689,6 +760,15 @@ section:hover {
   .link-input-group {
     flex-direction: column;
     gap: var(--spacing-sm);
+  }
+  
+  .task-sort-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .sort-select {
+    max-width: 100%;
   }
   
   .input-field {

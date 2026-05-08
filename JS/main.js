@@ -264,8 +264,8 @@ class GreetingController {
 
 
 /**
- * TimerController - Manages a 25-minute countdown timer
- * Provides start, stop, and reset functionality for focus timing
+ * TimerController - Manages a customizable countdown timer
+ * Provides start, stop, reset, and duration customization functionality
  */
 class TimerController {
   /**
@@ -274,15 +274,20 @@ class TimerController {
    * @param {HTMLElement} startBtn - Start button element
    * @param {HTMLElement} stopBtn - Stop button element
    * @param {HTMLElement} resetBtn - Reset button element
+   * @param {HTMLElement} durationInput - Input element for duration
+   * @param {HTMLElement} setDurationBtn - Button to set duration
    */
-  constructor(displayElement, startBtn, stopBtn, resetBtn) {
+  constructor(displayElement, startBtn, stopBtn, resetBtn, durationInput, setDurationBtn) {
     this.displayElement = displayElement;
     this.startBtn = startBtn;
     this.stopBtn = stopBtn;
     this.resetBtn = resetBtn;
+    this.durationInput = durationInput;
+    this.setDurationBtn = setDurationBtn;
     
     // State management
-    this.timeRemaining = 1500; // 25 minutes in seconds
+    this.defaultDuration = 1500; // 25 minutes in seconds
+    this.timeRemaining = this.defaultDuration;
     this.isRunning = false;
     this.intervalId = null;
   }
@@ -304,6 +309,42 @@ class TimerController {
     this.startBtn.addEventListener('click', () => this.start());
     this.stopBtn.addEventListener('click', () => this.stop());
     this.resetBtn.addEventListener('click', () => this.reset());
+    
+    // Set up duration customization if elements exist
+    if (this.durationInput && this.setDurationBtn) {
+      this.setDurationBtn.addEventListener('click', () => this.setDuration());
+      this.durationInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.setDuration();
+        }
+      });
+    }
+  }
+
+  /**
+   * Set custom timer duration
+   */
+  setDuration() {
+    // Don't allow changing duration while timer is running
+    if (this.isRunning) {
+      alert('Please stop the timer before changing the duration.');
+      return;
+    }
+
+    const minutes = parseInt(this.durationInput.value, 10);
+    
+    // Validate input
+    if (isNaN(minutes) || minutes < 1 || minutes > 120) {
+      alert('Please enter a valid duration between 1 and 120 minutes.');
+      return;
+    }
+
+    // Set new default duration
+    this.defaultDuration = minutes * 60;
+    this.timeRemaining = this.defaultDuration;
+    
+    // Update display
+    this.updateDisplay();
   }
 
   /**
@@ -349,14 +390,14 @@ class TimerController {
   }
 
   /**
-   * Reset timer to 25:00
+   * Reset timer to default duration
    */
   reset() {
     // Stop timer if running
     this.stop();
 
-    // Reset time to 25 minutes
-    this.timeRemaining = 1500;
+    // Reset time to default duration
+    this.timeRemaining = this.defaultDuration;
 
     // Update display
     this.updateDisplay();
@@ -402,12 +443,15 @@ class TaskManager {
    * @param {HTMLElement} inputElement - Task input field element
    * @param {HTMLElement} addButton - Add task button element
    * @param {HTMLElement} listElement - Task list container element
+   * @param {HTMLElement} sortSelect - Sort dropdown element
    */
-  constructor(inputElement, addButton, listElement) {
+  constructor(inputElement, addButton, listElement, sortSelect) {
     this.inputElement = inputElement;
     this.addButton = addButton;
     this.listElement = listElement;
+    this.sortSelect = sortSelect;
     this.tasks = [];
+    this.currentSort = 'default';
   }
 
   /**
@@ -439,6 +483,23 @@ class TaskManager {
         this.addTask(text);
       }
     });
+
+    // Set up sort listener if element exists
+    if (this.sortSelect) {
+      this.sortSelect.addEventListener('change', (e) => {
+        this.currentSort = e.target.value;
+        this.renderTasks();
+      });
+    }
+  }
+
+  /**
+   * Check if task with same text already exists
+   * @param {string} text - Task text to check
+   * @returns {boolean} - True if duplicate exists, false otherwise
+   */
+  isDuplicate(text) {
+    return this.tasks.some(task => task.text.toLowerCase() === text.toLowerCase());
   }
 
   /**
@@ -452,6 +513,12 @@ class TaskManager {
     
     if (!trimmedText) {
       // Silent rejection for empty input
+      return false;
+    }
+
+    // Check for duplicate
+    if (this.isDuplicate(trimmedText)) {
+      alert('This task already exists in your list!');
       return false;
     }
 
@@ -566,14 +633,44 @@ class TaskManager {
   }
 
   /**
+   * Get sorted tasks based on current sort option
+   * @returns {Array} - Sorted array of tasks
+   */
+  getSortedTasks() {
+    const tasksCopy = [...this.tasks];
+
+    switch (this.currentSort) {
+      case 'alphabetical':
+        return tasksCopy.sort((a, b) => a.text.localeCompare(b.text));
+      
+      case 'status':
+        return tasksCopy.sort((a, b) => {
+          // Incomplete tasks first
+          if (a.completed === b.completed) {
+            return 0;
+          }
+          return a.completed ? 1 : -1;
+        });
+      
+      case 'default':
+      default:
+        // Default: newest first (reverse chronological by createdAt)
+        return tasksCopy.sort((a, b) => b.createdAt - a.createdAt);
+    }
+  }
+
+  /**
    * Render all tasks to DOM
    */
   renderTasks() {
     // Clear current list
     this.listElement.innerHTML = '';
 
+    // Get sorted tasks
+    const sortedTasks = this.getSortedTasks();
+
     // Render each task
-    this.tasks.forEach(task => {
+    sortedTasks.forEach(task => {
       // Create list item
       const li = document.createElement('li');
       li.className = 'task-item';
@@ -897,10 +994,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const startBtn = document.getElementById('start-btn');
   const stopBtn = document.getElementById('stop-btn');
   const resetBtn = document.getElementById('reset-btn');
+  const timerDuration = document.getElementById('timer-duration');
+  const setDurationBtn = document.getElementById('set-duration-btn');
   
   const taskInput = document.getElementById('task-input');
   const addTaskBtn = document.getElementById('add-task-btn');
   const taskList = document.getElementById('task-list');
+  const taskSort = document.getElementById('task-sort');
   
   const linkName = document.getElementById('link-name');
   const linkUrl = document.getElementById('link-url');
@@ -919,16 +1019,16 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!timerDisplay || !startBtn || !stopBtn || !resetBtn) {
     console.error('Missing timer elements');
   } else {
-    // Initialize TimerController
-    const timerController = new TimerController(timerDisplay, startBtn, stopBtn, resetBtn);
+    // Initialize TimerController with optional duration controls
+    const timerController = new TimerController(timerDisplay, startBtn, stopBtn, resetBtn, timerDuration, setDurationBtn);
     timerController.init();
   }
 
   if (!taskInput || !addTaskBtn || !taskList) {
     console.error('Missing task elements');
   } else {
-    // Initialize TaskManager
-    const taskManager = new TaskManager(taskInput, addTaskBtn, taskList);
+    // Initialize TaskManager with optional sort control
+    const taskManager = new TaskManager(taskInput, addTaskBtn, taskList, taskSort);
     taskManager.init();
   }
 

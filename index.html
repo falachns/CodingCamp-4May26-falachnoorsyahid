@@ -18,6 +18,11 @@
     <!-- FOCUS TIMER SECTION -->
     <section id="timer" class="timer-section">
       <h2 class="section-title">Focus Timer</h2>
+      <div class="timer-duration-group">
+        <label for="timer-duration" class="timer-duration-label">Duration (minutes):</label>
+        <input type="number" id="timer-duration" class="input-field timer-duration-input" value="25" min="1" max="120" aria-label="Timer duration in minutes">
+        <button id="set-duration-btn" class="btn btn-secondary btn-small">Set</button>
+      </div>
       <p id="timer-display" class="timer-display">25:00</p>
       <div class="timer-controls">
         <button id="start-btn" class="btn btn-primary">Start</button>
@@ -32,6 +37,14 @@
       <div class="task-input-group">
         <input type="text" id="task-input" class="input-field" placeholder="Add a new task..." aria-label="New task">
         <button id="add-task-btn" class="btn btn-primary">Add</button>
+      </div>
+      <div class="task-sort-group">
+        <label for="task-sort" class="sort-label">Sort by:</label>
+        <select id="task-sort" class="sort-select" aria-label="Sort tasks">
+          <option value="default">Default (newest first)</option>
+          <option value="alphabetical">Alphabetical (A-Z)</option>
+          <option value="status">Status (incomplete first)</option>
+        </select>
       </div>
       <ul id="task-list" class="task-list"></ul>
     </section>
