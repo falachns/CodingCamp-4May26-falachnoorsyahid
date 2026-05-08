@@ -19,9 +19,11 @@ global.localStorage = dom.window.localStorage;
 // Load and evaluate the classes from main.js
 const mainJsPath = join(__dirname, 'main.js');
 const mainJsCode = readFileSync(mainJsPath, 'utf-8');
-// Remove the module.exports line for browser context and evaluate
-const browserCode = mainJsCode.replace(/\/\/ Export for testing[\s\S]*$/, '');
-const { StorageManager, GreetingController } = eval(`${browserCode}; ({ StorageManager, GreetingController })`);
+// Remove the module.exports and DOMContentLoaded lines for browser context and evaluate
+const browserCode = mainJsCode
+  .replace(/\/\/ Export for testing[\s\S]*?(?=\/\*\*|\n\n|$)/, '')
+  .replace(/document\.addEventListener\('DOMContentLoaded'[\s\S]*$/, '');
+const { StorageManager, GreetingController, TimerController, TaskManager } = eval(`${browserCode}; ({ StorageManager, GreetingController, TimerController, TaskManager })`);
 
 describe('StorageManager', () => {
   beforeEach(() => {
@@ -240,13 +242,15 @@ describe('GreetingController', () => {
       
       // Mock Date to return specific time (e.g., 09:05:03)
       const mockDate = new Date('2024-01-01T09:05:03');
-      vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+      const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+        return mockDate;
+      });
       
       controller.updateTime();
       
       expect(timeElement.textContent).toBe('09:05:03');
       
-      vi.restoreAllMocks();
+      DateSpy.mockRestore();
     });
 
     it('should update time display every call', () => {
@@ -281,7 +285,9 @@ describe('GreetingController', () => {
       
       // Mock Date to return specific date
       const mockDate = new Date('2024-01-15T12:00:00');
-      vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+      const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+        return mockDate;
+      });
       
       controller.updateDate();
       
@@ -291,7 +297,7 @@ describe('GreetingController', () => {
       expect(dateElement.textContent).toContain('15');
       expect(dateElement.textContent).toContain('2024');
       
-      vi.restoreAllMocks();
+      DateSpy.mockRestore();
     });
   });
 
@@ -304,12 +310,14 @@ describe('GreetingController', () => {
       
       morningHours.forEach(hour => {
         const mockDate = new Date(`2024-01-01T${String(hour).padStart(2, '0')}:00:00`);
-        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+          return mockDate;
+        });
         
         const greeting = controller.getGreeting();
         expect(greeting).toBe('Good morning');
         
-        vi.restoreAllMocks();
+        DateSpy.mockRestore();
       });
     });
 
@@ -321,12 +329,14 @@ describe('GreetingController', () => {
       
       afternoonHours.forEach(hour => {
         const mockDate = new Date(`2024-01-01T${String(hour).padStart(2, '0')}:00:00`);
-        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+          return mockDate;
+        });
         
         const greeting = controller.getGreeting();
         expect(greeting).toBe('Good afternoon');
         
-        vi.restoreAllMocks();
+        DateSpy.mockRestore();
       });
     });
 
@@ -338,12 +348,14 @@ describe('GreetingController', () => {
       
       eveningHours.forEach(hour => {
         const mockDate = new Date(`2024-01-01T${String(hour).padStart(2, '0')}:00:00`);
-        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+          return mockDate;
+        });
         
         const greeting = controller.getGreeting();
         expect(greeting).toBe('Good evening');
         
-        vi.restoreAllMocks();
+        DateSpy.mockRestore();
       });
     });
 
@@ -355,12 +367,14 @@ describe('GreetingController', () => {
       
       nightHours.forEach(hour => {
         const mockDate = new Date(`2024-01-01T${String(hour).padStart(2, '0')}:00:00`);
-        vi.spyOn(global, 'Date').mockImplementation(() => mockDate);
+        const DateSpy = vi.spyOn(global, 'Date').mockImplementation(function() {
+          return mockDate;
+        });
         
         const greeting = controller.getGreeting();
         expect(greeting).toBe('Good night');
         
-        vi.restoreAllMocks();
+        DateSpy.mockRestore();
       });
     });
   });
@@ -389,7 +403,8 @@ describe('GreetingController', () => {
       controller.init();
       
       expect(controller.intervalId).not.toBe(null);
-      expect(typeof controller.intervalId).toBe('number');
+      // In Node.js, setInterval returns an object; in browsers, it returns a number
+      expect(controller.intervalId).toBeTruthy();
     });
 
     it('should not initialize if DOM elements are missing', () => {
@@ -460,6 +475,347 @@ describe('GreetingController', () => {
       
       const validGreetings = ['Good morning', 'Good afternoon', 'Good evening', 'Good night'];
       expect(validGreetings).toContain(greetingElement.textContent);
+    });
+  });
+});
+
+describe('TimerController', () => {
+  let displayElement;
+  let startBtn;
+  let stopBtn;
+  let resetBtn;
+  let controller;
+
+  beforeEach(() => {
+    // Create mock DOM elements
+    displayElement = document.createElement('p');
+    startBtn = document.createElement('button');
+    stopBtn = document.createElement('button');
+    resetBtn = document.createElement('button');
+    
+    // Clear any existing intervals
+    if (controller) {
+      controller.destroy();
+    }
+  });
+
+  afterEach(() => {
+    // Clean up intervals
+    if (controller) {
+      controller.destroy();
+    }
+  });
+
+  describe('constructor', () => {
+    it('should create a TimerController with provided elements', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.displayElement).toBe(displayElement);
+      expect(controller.startBtn).toBe(startBtn);
+      expect(controller.stopBtn).toBe(stopBtn);
+      expect(controller.resetBtn).toBe(resetBtn);
+      expect(controller.timeRemaining).toBe(1500);
+      expect(controller.isRunning).toBe(false);
+      expect(controller.intervalId).toBe(null);
+    });
+  });
+
+  describe('init', () => {
+    it('should set initial display to 25:00', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      expect(displayElement.textContent).toBe('25:00');
+    });
+
+    it('should set up event listeners for buttons', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Verify buttons have click listeners by triggering them
+      expect(() => startBtn.click()).not.toThrow();
+      expect(() => stopBtn.click()).not.toThrow();
+      expect(() => resetBtn.click()).not.toThrow();
+    });
+
+    it('should not initialize if DOM elements are missing', () => {
+      controller = new TimerController(null, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Should not throw error
+      expect(controller.intervalId).toBe(null);
+    });
+  });
+
+  describe('formatTime', () => {
+    it('should format 0 seconds as 00:00', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(0)).toBe('00:00');
+    });
+
+    it('should format 59 seconds as 00:59', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(59)).toBe('00:59');
+    });
+
+    it('should format 60 seconds as 01:00', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(60)).toBe('01:00');
+    });
+
+    it('should format 3599 seconds as 59:59', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(3599)).toBe('59:59');
+    });
+
+    it('should format 1500 seconds as 25:00', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(1500)).toBe('25:00');
+    });
+
+    it('should format 125 seconds as 02:05', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      expect(controller.formatTime(125)).toBe('02:05');
+    });
+  });
+
+  describe('start', () => {
+    it('should set isRunning to true', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      
+      expect(controller.isRunning).toBe(true);
+    });
+
+    it('should start countdown interval', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      
+      expect(controller.intervalId).not.toBe(null);
+      // In Node.js, setInterval returns an object; in browsers, it returns a number
+      expect(controller.intervalId).toBeTruthy();
+    });
+
+    it('should ignore multiple start calls', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      const firstIntervalId = controller.intervalId;
+      
+      controller.start();
+      const secondIntervalId = controller.intervalId;
+      
+      expect(firstIntervalId).toBe(secondIntervalId);
+    });
+
+    it('should countdown and update display', async () => {
+      vi.useFakeTimers();
+      
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      expect(displayElement.textContent).toBe('25:00');
+      
+      controller.start();
+      
+      // Advance time by 1 second
+      vi.advanceTimersByTime(1000);
+      
+      expect(displayElement.textContent).toBe('24:59');
+      
+      // Advance time by another second
+      vi.advanceTimersByTime(1000);
+      
+      expect(displayElement.textContent).toBe('24:58');
+      
+      vi.useRealTimers();
+    });
+
+    it('should stop at 00:00', async () => {
+      vi.useFakeTimers();
+      
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Set time to 2 seconds
+      controller.timeRemaining = 2;
+      controller.updateDisplay();
+      
+      controller.start();
+      
+      // Advance time by 2 seconds
+      vi.advanceTimersByTime(2000);
+      
+      expect(displayElement.textContent).toBe('00:00');
+      expect(controller.isRunning).toBe(false);
+      expect(controller.timeRemaining).toBe(0);
+      
+      vi.useRealTimers();
+    });
+  });
+
+  describe('stop', () => {
+    it('should set isRunning to false', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      controller.stop();
+      
+      expect(controller.isRunning).toBe(false);
+    });
+
+    it('should clear the interval', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      expect(controller.intervalId).not.toBe(null);
+      
+      controller.stop();
+      expect(controller.intervalId).toBe(null);
+    });
+
+    it('should preserve time remaining', async () => {
+      vi.useFakeTimers();
+      
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      
+      // Advance time by 3 seconds
+      vi.advanceTimersByTime(3000);
+      
+      const timeBeforeStop = controller.timeRemaining;
+      controller.stop();
+      const timeAfterStop = controller.timeRemaining;
+      
+      expect(timeBeforeStop).toBe(timeAfterStop);
+      expect(timeAfterStop).toBe(1497); // 1500 - 3
+      
+      vi.useRealTimers();
+    });
+
+    it('should handle being called when timer is not running', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Should not throw error
+      expect(() => controller.stop()).not.toThrow();
+    });
+  });
+
+  describe('reset', () => {
+    it('should reset time to 1500 seconds (25:00)', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Change time
+      controller.timeRemaining = 500;
+      
+      controller.reset();
+      
+      expect(controller.timeRemaining).toBe(1500);
+    });
+
+    it('should update display to 25:00', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Change time
+      controller.timeRemaining = 500;
+      controller.updateDisplay();
+      
+      controller.reset();
+      
+      expect(displayElement.textContent).toBe('25:00');
+    });
+
+    it('should stop timer if running', async () => {
+      vi.useFakeTimers();
+      
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      
+      // Advance time by 5 seconds
+      vi.advanceTimersByTime(5000);
+      
+      expect(controller.isRunning).toBe(true);
+      
+      controller.reset();
+      
+      expect(controller.isRunning).toBe(false);
+      expect(controller.intervalId).toBe(null);
+      expect(controller.timeRemaining).toBe(1500);
+      
+      vi.useRealTimers();
+    });
+
+    it('should work when timer is not running', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.timeRemaining = 800;
+      
+      controller.reset();
+      
+      expect(controller.timeRemaining).toBe(1500);
+      expect(displayElement.textContent).toBe('25:00');
+    });
+  });
+
+  describe('updateDisplay', () => {
+    it('should update display element with formatted time', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      
+      controller.timeRemaining = 1500;
+      controller.updateDisplay();
+      expect(displayElement.textContent).toBe('25:00');
+      
+      controller.timeRemaining = 0;
+      controller.updateDisplay();
+      expect(displayElement.textContent).toBe('00:00');
+      
+      controller.timeRemaining = 125;
+      controller.updateDisplay();
+      expect(displayElement.textContent).toBe('02:05');
+    });
+  });
+
+  describe('destroy', () => {
+    it('should stop the timer', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      controller.start();
+      expect(controller.isRunning).toBe(true);
+      
+      controller.destroy();
+      
+      expect(controller.isRunning).toBe(false);
+      expect(controller.intervalId).toBe(null);
+    });
+
+    it('should handle being called when timer is not running', () => {
+      controller = new TimerController(displayElement, startBtn, stopBtn, resetBtn);
+      controller.init();
+      
+      // Should not throw error
+      expect(() => controller.destroy()).not.toThrow();
     });
   });
 });
